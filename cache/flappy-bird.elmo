@@ -1,0 +1,170 @@
+Elm.Main = Elm.Main || {};
+Elm.Main.make = function (_elm) {
+   _elm.Main = _elm.Main || {};
+   if (_elm.Main.values)
+   return _elm.Main.values;
+   var _N = Elm.Native,
+   _U = _N.Utils.make(_elm),
+   _L = _N.List.make(_elm),
+   _E = _N.Error.make(_elm),
+   _J = _N.JavaScript.make(_elm),
+   $moduleName = "Main";
+   var Basics = Elm.Basics.make(_elm);
+   var Color = Elm.Color.make(_elm);
+   var Graphics = Graphics || {};
+   Graphics.Collage = Elm.Graphics.Collage.make(_elm);
+   var Graphics = Graphics || {};
+   Graphics.Element = Elm.Graphics.Element.make(_elm);
+   var Keyboard = Elm.Keyboard.make(_elm);
+   var List = Elm.List.make(_elm);
+   var Maybe = Elm.Maybe.make(_elm);
+   var Native = Native || {};
+   Native.Ports = Elm.Native.Ports.make(_elm);
+   var Prelude = Elm.Prelude.make(_elm);
+   var Signal = Elm.Signal.make(_elm);
+   var String = Elm.String.make(_elm);
+   var Text = Elm.Text.make(_elm);
+   var Time = Elm.Time.make(_elm);
+   var Window = Elm.Window.make(_elm);
+   var _op = {};
+   var pipeGreen = A3(Color.rgb,
+   60,
+   100,
+   60);
+   var displayPipe = function (pipe) {
+      return _J.toList([Graphics.Collage.move({ctor: "_Tuple2"
+                                              ,_0: pipe.x
+                                              ,_1: pipe.top})(Graphics.Collage.filled(pipeGreen)(A2(Graphics.Collage.rect,
+                       50,
+                       50)))
+                       ,Graphics.Collage.move({ctor: "_Tuple2"
+                                              ,_0: pipe.x
+                                              ,_1: pipe.bottom})(Graphics.Collage.filled(pipeGreen)(A2(Graphics.Collage.rect,
+                       50,
+                       50)))]);
+   };
+   var display = function (game) {
+      return A2(Graphics.Collage.collage,
+      500,
+      500)(A2(List.concatMap,
+      displayPipe,
+      game.pipes));
+   };
+   var addPipe = F2(function (d,
+   game) {
+      return _U.cmp(game.countdown,
+      0) < 1 ? {ctor: "::"
+               ,_0: {_: {}
+                    ,bottom: -50
+                    ,top: 50
+                    ,x: 200}
+               ,_1: game.pipes} : game.pipes;
+   });
+   var movePipe = F2(function (d,
+   pipe) {
+      return _U.replace([["x"
+                         ,pipe.x - d]],
+      pipe);
+   });
+   var filterPipe = function (pipe) {
+      return _U.cmp(pipe.x,
+      -100) > 0;
+   };
+   var updatePipes = F2(function (d,
+   game) {
+      return List.filter(filterPipe)(List.map(movePipe(d))(A2(addPipe,
+      d,
+      game)));
+   });
+   var updateCountdown = F2(function (d,
+   countdown) {
+      return _U.cmp(countdown,
+      0) < 1 ? 100 : countdown - d;
+   });
+   var stepGame = F2(function (d,
+   game) {
+      return _U.replace([["countdown"
+                         ,A2(updateCountdown,
+                         d,
+                         game.countdown)]
+                        ,["pipes"
+                         ,A2(updatePipes,d,game)]],
+      game);
+   });
+   var step = function (_v0) {
+      return function () {
+         switch (_v0.ctor)
+         {case "_Tuple2":
+            return stepGame(_v0._0);}
+         _E.Case($moduleName,
+         "on line 36, column 18 to 28");
+      }();
+   };
+   var initialGame = {_: {}
+                     ,countdown: 30
+                     ,pipes: _J.toList([])};
+   var Game = F2(function (a,b) {
+      return {_: {}
+             ,countdown: b
+             ,pipes: a};
+   });
+   var Bird = F2(function (a,b) {
+      return {_: {},dy: b,y: a};
+   });
+   var Pipe = F3(function (a,b,c) {
+      return {_: {}
+             ,bottom: c
+             ,top: b
+             ,x: a};
+   });
+   var Dead = {ctor: "Dead"};
+   var Playing = {ctor: "Playing"};
+   var Waiting = {ctor: "Waiting"};
+   var delta = A2(Signal._op["<~"],
+   function (t) {
+      return t / 20;
+   },
+   Time.fps(60));
+   var input = A2(Signal.sampleOn,
+   delta,
+   A2(Signal._op["~"],
+   A2(Signal._op["<~"],
+   F2(function (v0,v1) {
+      return {ctor: "_Tuple2"
+             ,_0: v0
+             ,_1: v1};
+   }),
+   delta),
+   Keyboard.space));
+   var gameState = A3(Signal.foldp,
+   step,
+   initialGame,
+   input);
+   var main = Signal.lift(display)(A3(Signal.foldp,
+   step,
+   initialGame,
+   input));
+   _elm.Main.values = {_op: _op
+                      ,delta: delta
+                      ,input: input
+                      ,initialGame: initialGame
+                      ,updateCountdown: updateCountdown
+                      ,filterPipe: filterPipe
+                      ,movePipe: movePipe
+                      ,addPipe: addPipe
+                      ,updatePipes: updatePipes
+                      ,stepGame: stepGame
+                      ,step: step
+                      ,pipeGreen: pipeGreen
+                      ,displayPipe: displayPipe
+                      ,display: display
+                      ,gameState: gameState
+                      ,main: main
+                      ,Waiting: Waiting
+                      ,Playing: Playing
+                      ,Dead: Dead
+                      ,Pipe: Pipe
+                      ,Bird: Bird
+                      ,Game: Game};
+   return _elm.Main.values;
+};
