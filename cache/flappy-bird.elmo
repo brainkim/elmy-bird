@@ -73,7 +73,7 @@ Elm.Main.make = function (_elm) {
                       drawPipe(Basics.toFloat(_v0._1)),
                       game.pipes)});}
          _E.Case($moduleName,
-         "between lines 100 and 102");
+         "between lines 98 and 100");
       }();
    });
    var near = F3(function (n,c,m) {
@@ -83,17 +83,20 @@ Elm.Main.make = function (_elm) {
    });
    var collision = F2(function (bird,
    pipe) {
-      return A3(near,
+      return (A3(near,
       12.5,
       25,
-      pipe.x) && (_U.cmp(bird.y,
+      pipe.x) || A3(near,
+      -12.5,
+      25,
+      pipe.x)) && (_U.cmp(bird.y,
       pipe.top) > 0 || _U.cmp(bird.y,
       pipe.bottom) < 0);
    });
    var flap = F2(function (f,
    bird) {
-      return _U.replace([["dy"
-                         ,f ? 7 : bird.dy]],
+      return _U.replace([["acc"
+                         ,f ? 7 : bird.acc]],
       bird);
    });
    var gravity = F2(function (d,
@@ -101,11 +104,11 @@ Elm.Main.make = function (_elm) {
       return _U.replace([["y"
                          ,A2(Basics.max,
                          -300,
-                         bird.y + bird.dy * d)]
-                        ,["dy"
+                         bird.y + bird.acc * d)]
+                        ,["acc"
                          ,A2(Basics.max,
                          -50,
-                         bird.dy - 0.8 * Math.pow(d,
+                         bird.acc - 0.8 * Math.pow(d,
                          2))]],
       bird);
    });
@@ -118,7 +121,7 @@ Elm.Main.make = function (_elm) {
               _v4._1,
               bird));}
          _E.Case($moduleName,
-         "on line 52, column 32 to 56");
+         "on line 51, column 32 to 56");
       }();
    });
    var addPipe = F3(function (rand,
@@ -130,18 +133,18 @@ Elm.Main.make = function (_elm) {
             return _U.cmp(game.countdown,
               0) < 1 ? {ctor: "::"
                        ,_0: {_: {}
-                            ,bottom: -100 + rand
-                            ,top: 100 + rand
+                            ,bottom: -60 + rand
+                            ,top: 60 + rand
                             ,x: _v10._0 / 2 + 50}
                        ,_1: game.pipes} : game.pipes;}
          _E.Case($moduleName,
-         "between lines 38 and 40");
+         "between lines 37 and 39");
       }();
    });
    var movePipe = F2(function (d,
    pipe) {
       return _U.replace([["x"
-                         ,pipe.x - 1.5 * d]],
+                         ,pipe.x - 1.8 * d]],
       pipe);
    });
    var filterPipe = F2(function (_v14,
@@ -152,7 +155,7 @@ Elm.Main.make = function (_elm) {
             return _U.cmp(pipe.x,
               (0 - _v14._0) / 2 - 50) > 0;}
          _E.Case($moduleName,
-         "on line 34, column 26 to 47");
+         "on line 33, column 26 to 47");
       }();
    });
    var updatePipes = F2(function (_v18,
@@ -165,7 +168,7 @@ Elm.Main.make = function (_elm) {
               _v18._3,
               game)));}
          _E.Case($moduleName,
-         "between lines 43 and 45");
+         "between lines 42 and 44");
       }();
    });
    var updateCountdown = F2(function (_v24,
@@ -176,7 +179,7 @@ Elm.Main.make = function (_elm) {
             return _U.cmp(countdown,
               0) < 1 ? 100 : countdown - _v24._0;}
          _E.Case($moduleName,
-         "on line 32, column 42 to 87");
+         "on line 31, column 42 to 87");
       }();
    });
    var Game = F4(function (a,
@@ -190,7 +193,7 @@ Elm.Main.make = function (_elm) {
              ,state: d};
    });
    var Bird = F2(function (a,b) {
-      return {_: {},dy: b,y: a};
+      return {_: {},acc: b,y: a};
    });
    var Pipe = F3(function (a,b,c) {
       return {_: {}
@@ -223,7 +226,7 @@ Elm.Main.make = function (_elm) {
    });
    var Waiting = {ctor: "Waiting"};
    var initialGame = {_: {}
-                     ,bird: {_: {},dy: 0,y: 0}
+                     ,bird: {_: {},acc: 0,y: 0}
                      ,countdown: 30
                      ,pipes: _J.toList([])
                      ,state: Waiting};
@@ -236,7 +239,7 @@ Elm.Main.make = function (_elm) {
                                          ,Playing]],
               initialGame) : initialGame;}
          _E.Case($moduleName,
-         "between lines 75 and 77");
+         "between lines 74 and 76");
       }();
    });
    var $continue = function (flap) {
@@ -255,7 +258,7 @@ Elm.Main.make = function (_elm) {
                                game.bird)]],
               game);}
          _E.Case($moduleName,
-         "between lines 72 and 73");
+         "between lines 71 and 72");
       }();
    });
    var step = F2(function (input,
@@ -274,7 +277,7 @@ Elm.Main.make = function (_elm) {
               input,
               game);}
          _E.Case($moduleName,
-         "between lines 79 and 82");
+         "between lines 78 and 81");
       }();
    });
    var toFloat2 = function (_v43) {

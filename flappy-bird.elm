@@ -7,7 +7,7 @@ delta : Signal Float
 delta = (\t -> t/20) <~ fps 60
 
 type Dims = (Float, Float) 
-type Input = (Float, Bool, Int, Dims) 
+type Input = (Float, Bool, Int, Dims)
 
 toFloat2 (w, h) = (toFloat w, toFloat h)
 
@@ -18,25 +18,24 @@ inputSig = sampleOn delta ((,,,) <~ delta
                                   ~ lift toFloat2 Window.dimensions)
 
 data State = Waiting | Playing | Dead
-
 type Pipe = { x: Float, top: Float, bottom: Float }
-type Bird = { y: Float, dy: Float }
+type Bird = { y: Float, acc: Float }
 type Game = { pipes: [Pipe], countdown: Float, bird: Bird, state: State }
 
 initialGame : Game
 initialGame = { pipes = [],
                 countdown = 30,
-                bird = { y = 0, dy = 0 },
+                bird = { y = 0, acc = 0 },
                 state = Waiting }
 
 updateCountdown (d, _, _, _) countdown = if countdown <= 0 then 100 else countdown - d
 
 filterPipe (w, h) pipe = pipe.x > (-w / 2 - 50)
-movePipe d pipe = { pipe | x <- pipe.x - 1.5 * d }
+movePipe d pipe = { pipe | x <- pipe.x - 1.8 * d }
 
 addPipe rand (w, h) game =
     if game.countdown <= 0
-    then { x = w / 2 + 50, top = 100 + rand, bottom = -100 + rand} :: game.pipes
+    then { x = w / 2 + 50, top = 60 + rand, bottom = -60 + rand} :: game.pipes
     else game.pipes
 
 updatePipes (d, f, rand, dims) game =
@@ -44,10 +43,10 @@ updatePipes (d, f, rand, dims) game =
     |> map (movePipe d)
     |> filter (filterPipe dims)
 
-gravity d bird = { bird | y <- max -300 (bird.y + bird.dy * d),
-                         dy <- max -50 (bird.dy - 0.8 * d ^ 2)}
+gravity d bird = { bird | y <- max -300 (bird.y + bird.acc * d),
+                         acc <- max -50 (bird.acc - 0.8 * d ^ 2)}
 
-flap f bird = { bird | dy <- if f then 7 else bird.dy }
+flap f bird = { bird | acc <- if f then 7 else bird.acc }
 
 updateBird (d, f, _, _) bird = flap f bird |> gravity d
 
@@ -55,8 +54,8 @@ near : Float -> Float -> Float -> Bool
 near n c m = m >= n - c && m <= n + c
 
 collision : Bird -> Pipe -> Bool
-collision bird pipe = near 12.5 25 pipe.x && (bird.y > pipe.top ||
-                                           bird.y < pipe.bottom) 
+collision bird pipe = (near 12.5 25 pipe.x || near -12.5 25 pipe.x)
+                      && (bird.y > pipe.top || bird.y < pipe.bottom) 
 
 updateState game = if any (collision game.bird) game.pipes
                    then Dead
@@ -84,7 +83,6 @@ step input game = case game.state of
 gameSig = foldp step initialGame inputSig
 
 pipeGreen = rgb 60 100 60
-
 drawPipe h pipe =
     let topPipeHeight = abs (h / 2 - pipe.top)
         bottomPipeHeight = abs (-(h / 2) - pipe.bottom)
