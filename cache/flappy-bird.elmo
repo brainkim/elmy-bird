@@ -28,17 +28,18 @@ Elm.Main.make = function (_elm) {
    var Time = Elm.Time.make(_elm);
    var Window = Elm.Window.make(_elm);
    var _op = {};
+   var displayBird = function (bird) {
+      return Graphics.Collage.rotate(4 * Basics.degrees(bird.acc))(Graphics.Collage.move({ctor: "_Tuple2"
+                                                                                         ,_0: 0
+                                                                                         ,_1: bird.y})(Graphics.Collage.toForm(A3(Graphics.Element.image,
+      40,
+      40,
+      "http://31.media.tumblr.com/e3c36d058a17229c54b1694670730a99/tumblr_n0dw9jUXOD1s6294bo1_r2_500.png"))));
+   };
    var flappyColor = A3(Color.rgb,
    255,
    0,
    0);
-   var displayBird = function (bird) {
-      return Graphics.Collage.move({ctor: "_Tuple2"
-                                   ,_0: 0
-                                   ,_1: bird.y})(Graphics.Collage.filled(flappyColor)(A2(Graphics.Collage.oval,
-      25,
-      25)));
-   };
    var pipeGreen = A3(Color.rgb,
    60,
    100,
@@ -73,7 +74,7 @@ Elm.Main.make = function (_elm) {
                       drawPipe(Basics.toFloat(_v0._1)),
                       game.pipes)});}
          _E.Case($moduleName,
-         "between lines 98 and 100");
+         "between lines 101 and 103");
       }();
    });
    var near = F3(function (n,c,m) {

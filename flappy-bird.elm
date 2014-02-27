@@ -19,13 +19,13 @@ inputSig = sampleOn delta ((,,,) <~ delta
 
 data State = Waiting | Playing | Dead
 type Pipe = { x: Float, top: Float, bottom: Float }
-type Bird = { y: Float, acc: Float }
+type Bird = { y: Float, vy: Float }
 type Game = { pipes: [Pipe], countdown: Float, bird: Bird, state: State }
 
 initialGame : Game
 initialGame = { pipes = [],
                 countdown = 30,
-                bird = { y = 0, acc = 0 },
+                bird = { y = 0, vy = 0 },
                 state = Waiting }
 
 updateCountdown (d, _, _, _) countdown = if countdown <= 0 then 100 else countdown - d
@@ -43,10 +43,10 @@ updatePipes (d, f, rand, dims) game =
     |> map (movePipe d)
     |> filter (filterPipe dims)
 
-gravity d bird = { bird | y <- max -300 (bird.y + bird.acc * d),
-                         acc <- max -50 (bird.acc - 0.8 * d ^ 2)}
+gravity d bird = { bird | y <- max -300 (bird.y + bird.vy * d),
+                         vy <- max -50 (bird.vy - 0.8 * d ^ 2)}
 
-flap f bird = { bird | acc <- if f then 7 else bird.acc }
+flap f bird = { bird | vy <- if f then 7 else bird.vy }
 
 updateBird (d, f, _, _) bird = flap f bird |> gravity d
 
@@ -93,7 +93,10 @@ drawPipe h pipe =
         |> move (pipe.x, -(h / 2) + bottomPipeHeight / 2)]
 
 flappyColor = rgb 255 0 0
-displayBird bird = oval 25 25 |> filled flappyColor |> move (0, bird.y)
+displayBird bird =
+  toForm (image 40 40 "http://31.media.tumblr.com/e3c36d058a17229c54b1694670730a99/tumblr_n0dw9jUXOD1s6294bo1_r2_500.png")
+    |> move (0, bird.y)
+    |> rotate (4 * degrees bird.vy)
 
 display (w, h) game = collage w h <| displayBird game.bird ::
                                      (concatMap (drawPipe (toFloat h))
