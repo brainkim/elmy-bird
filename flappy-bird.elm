@@ -1,55 +1,80 @@
 import Keyboard
+import Mouse
 import Time
 import Window
 import Random
 
+-- Constants
+gameWidth = 288
+gameHeight = 512
+overflow = 50
+gravity = -9.75
+
+-- Input
 delta : Signal Float
-delta = (\t -> t/20) <~ fps 60
+delta = inSeconds <~ fps 35
 
-type Dims = (Float, Float) 
-type Input = (Float, Bool, Int, Dims)
+type Inputs = {time: Float, tap: Bool, rand: Int}
+inputSig : Signal Inputs
+inputSig = sampleOn delta <| Inputs <~ delta
+                                     ~ merge Keyboard.space Mouse.isClicked
+                                     ~ Random.range -100 100 (every 2000)
 
-toFloat2 (w, h) = (toFloat w, toFloat h)
-
-inputSig : Signal Input
-inputSig = sampleOn delta ((,,,) <~ delta
-                                  ~ Keyboard.space
-                                  ~ Random.range -100 100 (every 2000) 
-                                  ~ lift toFloat2 Window.dimensions)
-
+-- Model
 data State = Waiting | Playing | Dead
-type Pipe = { x: Float, top: Float, bottom: Float }
-type Bird = { y: Float, vy: Float }
-type Game = { pipes: [Pipe], countdown: Float, bird: Bird, state: State }
+type Object a = { a | x: Float, y: Float, width: Float, height: Float }
+type Moving a = { a | vx: Float, vy: Float }
+type Bird = Moving (Object {})
+type Pipe = Moving (Object {})
+type Model = { pipes: [Pipe]
+             , countdown: Float
+             , bird: Bird
+             , state: State }
 
-initialGame : Game
-initialGame = { pipes = [],
-                countdown = 30,
-                bird = { y = 0, vy = 0 },
-                state = Waiting }
+initial : Model
+initial = { pipes = []
+          , countdown = 5 
+          , bird = { x=0, y=0, vx=0, vy=0, width=25, height=25 }
+          , state = Waiting }
 
-updateCountdown (d, _, _, _) countdown = if countdown <= 0 then 100 else countdown - d
+-- Update
+  -- Physics
+moving : Inputs -> Moving (Object {}) -> Moving (Object {})
+moving {time} m = { m | x <- m.x + m.vx * time
+                      , y <- m.y + m.vy * time }
 
-filterPipe (w, h) pipe = pipe.x > (-w / 2 - 50)
-movePipe d pipe = { pipe | x <- pipe.x - 1.8 * d }
+falling : Inputs -> Moving (Object {})
+                 -> Moving (Object {})
+falling {time} f = { f | vy <- f.vy + gravity * time ^ 2 }
+  -- Game
+filterPipe : Pipe -> Bool
+filterPipe pipe = pipe.x > -gameWidth/2 - overflow
 
-addPipe rand (w, h) game =
+pipe : Pipe
+pipe = { x=0, y=0, vx=0, vy=0, width=500, height=500 }
+addPipe : Inputs -> Model -> [Pipe]
+addPipe {rand} game =
     if game.countdown <= 0
-    then { x = w / 2 + 50, top = 60 + rand, bottom = -60 + rand} :: game.pipes
+    then { x = gameWidth/2 + overflow,
+           y = 0,
+           vx = -14,
+           vy = 0,
+           width = 500,
+           height = 500 } :: game.pipes
     else game.pipes
 
-updatePipes (d, f, rand, dims) game =
-    addPipe rand dims game
-    |> map (movePipe d)
-    |> filter (filterPipe dims)
+updatePipes : Inputs -> Model -> [Pipe]
+updatePipes inputs game =
+    addPipe inputs game
+    |> map (moving inputs)
+    |> filter filterPipe
 
-gravity d bird = { bird | y <- max -300 (bird.y + bird.vy * d),
-                         vy <- max -50 (bird.vy - 0.8 * d ^ 2)}
+flapBird {tap} bird = { bird | vy <- if tap then 7 else bird.vy }
 
-flap f bird = { bird | vy <- if f then 7 else bird.vy }
+updateBird : Inputs -> (Bird -> Bird)
+updateBird inputs = moving inputs . flapBird inputs
 
-updateBird (d, f, _, _) bird = flap f bird |> gravity d
-
+{--
 near : Float -> Float -> Float -> Bool
 near n c m = m >= n - c && m <= n + c
 
@@ -68,12 +93,13 @@ stepPlaying input game = { game | state     <- updateState game,
 
 continue flap = if flap then Waiting else Dead
 
-stepDead ((d,flap,rand,dims) as input) game = { game | state <- continue flap,
-                                                       bird  <- updateBird input game.bird } 
+stepDead input game = { game | state <- continue input.flap,
+                               bird  <- updateBird input game.bird }
 
-stepWaiting (_,flap,_,_) game = if flap
-                                then { initialGame | state <- Playing } 
-                                else initialGame
+stepWaiting input game = if input.flap
+                         then { initialGame | state <- Playing } 
+                         else initialGame
+
 step : Input -> Game -> Game
 step input game = case game.state of
                       Playing -> stepPlaying input game 
@@ -82,7 +108,10 @@ step input game = case game.state of
 
 gameSig = foldp step initialGame inputSig
 
+-- Render
 pipeGreen = rgb 60 100 60
+drawBackground = toForm <| image 288 512 "assets/background_day.png"
+
 drawPipe h pipe =
     let topPipeHeight = abs (h / 2 - pipe.top)
         bottomPipeHeight = abs (-(h / 2) - pipe.bottom)
@@ -94,12 +123,12 @@ drawPipe h pipe =
 
 flappyColor = rgb 255 0 0
 displayBird bird =
-  toForm (image 40 40 "http://31.media.tumblr.com/e3c36d058a17229c54b1694670730a99/tumblr_n0dw9jUXOD1s6294bo1_r2_500.png")
+  toForm (image 40 40 "assets/animation.gif")
     |> move (0, bird.y)
     |> rotate (4 * degrees bird.vy)
 
-display (w, h) game = collage w h <| displayBird game.bird ::
-                                     (concatMap (drawPipe (toFloat h))
-                                                 game.pipes)
-
-main = lift2 display Window.dimensions gameSig
+display game = collage <| displayBird game.bird ::
+                          drawBackground
+                          (concatMap (drawPipe (toFloat h))
+                                      game.pipes)
+--}
