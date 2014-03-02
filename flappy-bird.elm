@@ -8,107 +8,152 @@ import Random
 gameWidth = 288
 gameHeight = 512
 overflow = 50
-gravity = -9.75
+gravity = -0.9
+pipeInterval = 3
 
 -- Input
 delta : Signal Float
-delta = inSeconds <~ fps 35
+delta = (\t -> t/20) <~ fps 60
 
 type Inputs = {time: Float, tap: Bool, rand: Int}
 inputSig : Signal Inputs
-inputSig = sampleOn delta <| Inputs <~ delta
-                                     ~ merge Keyboard.space Mouse.isClicked
-                                     ~ Random.range -100 100 (every 2000)
+inputSig = Inputs <~ delta
+                   ~ dropRepeats Keyboard.space
+                   ~ Random.range -100 100 (every 1000)
 
 -- Model
 data State = Waiting | Playing | Dead
-type Object a = { a | x: Float, y: Float, width: Float, height: Float }
+type Object = { x: Float, y: Float, width: Float, height: Float }
 type Moving a = { a | vx: Float, vy: Float }
-type Bird = Moving (Object {})
-type Pipe = Moving (Object {})
-type Model = { pipes: [Pipe]
-             , countdown: Float
-             , bird: Bird
-             , state: State }
+type Bird = Moving Object
+type Pipe = Moving Object
+type Model = 
+    { pipes: [Pipe]
+    , countdown: Float
+    , bird: Bird
+    , state: State
+    , score: Int }
+
+bird : Bird
+bird = { x=0, y=0, vx=0, vy=0, width=92/3, height=64/3 }
 
 initial : Model
-initial = { pipes = []
-          , countdown = 5 
-          , bird = { x=0, y=0, vx=0, vy=0, width=25, height=25 }
-          , state = Waiting }
+initial =
+    { pipes = []
+    , countdown = 4 
+    , bird = bird
+    , state = Waiting
+    , score = 0 }
 
 -- Update
-  -- Physics
-moving : Inputs -> Moving (Object {}) -> Moving (Object {})
-moving {time} m = { m | x <- m.x + m.vx * time
-                      , y <- m.y + m.vy * time }
+-- Physics
+moving : Inputs -> Moving Object -> Moving Object
+moving {time} m =
+    { m | x <- m.x + m.vx * time
+        , y <- m.y + m.vy * time }
 
-falling : Inputs -> Moving (Object {})
-                 -> Moving (Object {})
+falling : Inputs -> Moving Object -> Moving Object
 falling {time} f = { f | vy <- f.vy + gravity * time ^ 2 }
-  -- Game
+
+nearing : Float -> Float -> Float -> Bool
+nearing n c m = m >= n - c && m <= n + c
+
+-- colliding : Object -> Object -> Bool
+colliding : Bird -> Pipe -> Bool
+colliding obj1 obj2 =
+    nearing obj1.x (obj1.width/2 + obj2.width/2) obj2.x ||
+    nearing obj1.y (obj1.height/2 + obj2.height/2) obj2.y
+
+-- Game
+pipe : Pipe
+pipe = { x=3, y=0, vx=-10, vy=0, width=500, height=500 }
+
+data Position = Top | Bottom
+createPipe : Int -> Position -> Pipe
+createPipe rand pos = pipe
+
+addPipes : Inputs -> Model -> [Pipe]
+addPipes {rand} game =
+    if game.countdown <= 0
+    then createPipe rand Top :: createPipe rand Bottom :: game.pipes
+    else game.pipes
+
 filterPipe : Pipe -> Bool
 filterPipe pipe = pipe.x > -gameWidth/2 - overflow
 
-pipe : Pipe
-pipe = { x=0, y=0, vx=0, vy=0, width=500, height=500 }
-addPipe : Inputs -> Model -> [Pipe]
-addPipe {rand} game =
-    if game.countdown <= 0
-    then { x = gameWidth/2 + overflow,
-           y = 0,
-           vx = -14,
-           vy = 0,
-           width = 500,
-           height = 500 } :: game.pipes
-    else game.pipes
-
 updatePipes : Inputs -> Model -> [Pipe]
 updatePipes inputs game =
-    addPipe inputs game
+    addPipes inputs game
     |> map (moving inputs)
     |> filter filterPipe
 
-flapBird {tap} bird = { bird | vy <- if tap then 7 else bird.vy }
+flapping : Inputs -> Bird -> Bird
+flapping {tap} bird = { bird | vy <- if tap then 7 else bird.vy }
 
-updateBird : Inputs -> (Bird -> Bird)
-updateBird inputs = moving inputs . flapBird inputs
+updateBird : Inputs -> Model -> Bird
+updateBird inputs = falling inputs . moving inputs . flapping inputs . .bird
 
-{--
-near : Float -> Float -> Float -> Bool
-near n c m = m >= n - c && m <= n + c
+updateState : Model -> State
+updateState game =
+    if any (colliding game.bird) game.pipes
+    then Dead
+    else Playing
 
-collision : Bird -> Pipe -> Bool
-collision bird pipe = (near 12.5 25 pipe.x || near -12.5 25 pipe.x)
-                      && (bird.y > pipe.top || bird.y < pipe.bottom) 
+updateCountdown : Inputs -> Model -> Float
+updateCountdown {time} game =
+    if game.countdown > 0
+    then game.countdown - time
+    else pipeInterval
 
-updateState game = if any (collision game.bird) game.pipes
-                   then Dead
-                   else Playing
+-- This seems so wrong
+updateScore : Model -> Int
+updateScore game =
+    if any (\n -> nearing n.x 0.1 0) game.pipes
+    then game.score + 1
+    else game.score
 
-stepPlaying input game = { game | state     <- updateState game,
-                                  countdown <- updateCountdown input game.countdown,
-                                  pipes     <- updatePipes input game,
-                                  bird      <- updateBird input game.bird }
+play : Inputs -> Model -> Model
+play inputs game =
+    { game | state     <- updateState game
+           , score     <- updateScore game
+           , countdown <- updateCountdown inputs game
+           , bird      <- updateBird inputs game }
 
-continue flap = if flap then Waiting else Dead
+dead : Inputs -> Model -> Model
+dead ({tap} as inputs) game =
+    if tap
+    then initial
+    else { game | bird <- falling inputs game.bird }
 
-stepDead input game = { game | state <- continue input.flap,
-                               bird  <- updateBird input game.bird }
+wait : Inputs -> Model -> Model
+wait ({tap} as inputs) game =
+    if tap
+    then play inputs game
+    else game
 
-stepWaiting input game = if input.flap
-                         then { initialGame | state <- Playing } 
-                         else initialGame
+step : Inputs -> Model -> Model
+step inputs game =
+    case game.state of
+        Playing -> play inputs game
+        Waiting -> wait inputs game
+        Dead -> dead inputs game
 
-step : Input -> Game -> Game
-step input game = case game.state of
-                      Playing -> stepPlaying input game 
-                      Dead -> stepDead input game
-                      Waiting -> stepWaiting input game
-
-gameSig = foldp step initialGame inputSig
+gameSig : Signal Model
+gameSig = foldp step initial inputSig
 
 -- Render
+pipeGreen = rgb 60 100 60
+
+drawBackground = toForm <| image gameWidth gameHeight "assets/background_day.png"
+
+drawBird bird =
+    collage 500 500
+    [(toForm (fittedImage (round bird.width + 1) (round bird.height + 1) "assets/animation.gif")
+     |> move (0, bird.y))]
+
+main = lift (drawBird . .bird) gameSig
+
+{--
 pipeGreen = rgb 60 100 60
 drawBackground = toForm <| image 288 512 "assets/background_day.png"
 
