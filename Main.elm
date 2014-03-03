@@ -51,8 +51,7 @@ type Model =
     { pipes: [Pipe]
     , countdown: Float
     , bird: Bird
-    , state: State
-    , score: Int }
+    , state: State }
 
 bird : Bird
 bird = { x=birdX, y=0, vx=0, vy=0, width=birdWidth, height=birdHeight }
@@ -72,8 +71,7 @@ initial =
     { pipes = []
     , countdown = 100 
     , bird = bird
-    , state = Waiting
-    , score = 0 }
+    , state = Waiting }
 
 -- Update
 moving {time} m =
@@ -83,7 +81,7 @@ moving {time} m =
 falling {time} f = { f | vy <- f.vy + gravity * time^2 }
 
 gap : Float
-gap = pipeHeight / 2 + 120
+gap = pipeHeight / 2 + 125
 createPipe : Int -> Position -> Pipe
 createPipe rand pos =
     let y = case pos of
@@ -146,17 +144,9 @@ updateCountdown {time} game =
     then game.countdown - time
     else pipeInterval
 
--- This seems so wrong
-updateScore : Model -> Int
-updateScore game =
-    if any (\p -> nearing p.x 0.1 game.bird.x) game.pipes
-    then game.score + 1
-    else game.score
-
 play : Inputs -> Model -> Model
 play inputs game =
     { game | state     <- updateState game
-           , score     <- updateScore game
            , countdown <- updateCountdown inputs game
            , bird      <- updateBird inputs game
            , pipes     <- updatePipes inputs game }
@@ -217,8 +207,10 @@ drawPipe pipe =
 drawPipes pipes = []
     
 draw (w, h) game = 
-    (container w h middle . container gameWidth gameHeight middle . collage gameWidth gameHeight) <|
-    [scale 0.6 <|group ([drawBackground, drawGround, drawBird game.bird,
-                       (toForm . asText) game.state ] ++ (map drawPipe game.pipes))]
+    (container w h middle
+    . container gameWidth gameHeight middle
+    . collage gameWidth gameHeight) <|
+    [scale 0.6 <|group ([drawBackground,drawBird game.bird,
+                       (toForm . asText) game.state, drawGround ] ++ (map drawPipe game.pipes))]
 
 main = lift2 draw Window.dimensions gameSig
