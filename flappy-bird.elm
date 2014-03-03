@@ -5,10 +5,19 @@ import Window
 import Random
 
 -- Constants
-gameWidth = 288
-gameHeight = 512
+gameWidth : Int
+gameWidth = 768
+groundHeight : Int
+groundHeight = 128
+groundY = (toFloat -backgroundHeight) / 2 - (toFloat groundHeight) / 2
+backgroundHeight : Int
+backgroundHeight = 896
+gameHeight = backgroundHeight + groundHeight
+birdWidth = 92
+birdHeight = 64
 overflow = 50
-gravity = -0.9
+gravity = -0.8
+flapVelocity = 8
 pipeInterval = 3
 
 -- Input
@@ -18,16 +27,24 @@ delta = (\t -> t/20) <~ fps 60
 type Inputs = {time: Float, tap: Bool, rand: Int}
 inputSig : Signal Inputs
 inputSig = Inputs <~ delta
-                   ~ dropRepeats Keyboard.space
+                   ~ Keyboard.space
                    ~ Random.range -100 100 (every 1000)
 
 -- Model
 data State = Waiting | Playing | Dead
-type Object = { x: Float, y: Float, width: Float, height: Float }
-type Moving a = { a | vx: Float, vy: Float }
-type Bird = Moving Object
-type Pipe = Moving Object
-type Model = 
+type Object a =
+    { a | x: Float
+        , y: Float
+        , vx: Float
+        , vy: Float
+        , width: Int
+        , height: Int }
+
+type Bird = Object {}
+data Position = Top | Bottom
+type Pipe = Object { pos : Position }
+type Ground = Object {}
+type Model =
     { pipes: [Pipe]
     , countdown: Float
     , bird: Bird
@@ -35,7 +52,7 @@ type Model =
     , score: Int }
 
 bird : Bird
-bird = { x=0, y=0, vx=0, vy=0, width=92/3, height=64/3 }
+bird = { x=-120, y=0, vx=0, vy=0, width=46, height=32 }
 
 initial : Model
 initial =
@@ -47,30 +64,43 @@ initial =
 
 -- Update
 -- Physics
-moving : Inputs -> Moving Object -> Moving Object
 moving {time} m =
     { m | x <- m.x + m.vx * time
         , y <- m.y + m.vy * time }
 
-falling : Inputs -> Moving Object -> Moving Object
-falling {time} f = { f | vy <- f.vy + gravity * time ^ 2 }
+falling {time} f = { f | vy <- f.vy + gravity * time^2 }
 
 nearing : Float -> Float -> Float -> Bool
 nearing n c m = m >= n - c && m <= n + c
 
--- colliding : Object -> Object -> Bool
+-- colliding : Object {} -> Object {} -> Bool
 colliding : Bird -> Pipe -> Bool
 colliding obj1 obj2 =
-    nearing obj1.x (obj1.width/2 + obj2.width/2) obj2.x ||
-    nearing obj1.y (obj1.height/2 + obj2.height/2) obj2.y
+    let width1 = toFloat obj1.width
+        width2 = toFloat obj2.width
+        height1 = toFloat obj1.height
+        height2 = toFloat obj2.height
+    in
+    nearing obj1.x (width1/2 + width2/2) obj2.x ||
+    nearing obj1.y (height2/2 + height2/2) obj2.y
 
 -- Game
 pipe : Pipe
-pipe = { x=3, y=0, vx=-10, vy=0, width=500, height=500 }
+pipe =
+    { x = toFloat gameWidth / 2 + overflow
+    , y = 0
+    , vx = -5
+    , vy = 0
+    , width = 500
+    , height = 500
+    , pos = Top }
 
-data Position = Top | Bottom
 createPipe : Int -> Position -> Pipe
-createPipe rand pos = pipe
+createPipe rand pos =
+    { pipe | pos <- pos
+           , y   <- case pos of 
+                        Top -> toFloat rand + 25
+                        Bottom -> toFloat -rand - 25 }
 
 addPipes : Inputs -> Model -> [Pipe]
 addPipes {rand} game =
@@ -79,7 +109,7 @@ addPipes {rand} game =
     else game.pipes
 
 filterPipe : Pipe -> Bool
-filterPipe pipe = pipe.x > -gameWidth/2 - overflow
+filterPipe pipe = pipe.x > (toFloat -gameWidth) / 2 - overflow
 
 updatePipes : Inputs -> Model -> [Pipe]
 updatePipes inputs game =
@@ -88,7 +118,7 @@ updatePipes inputs game =
     |> filter filterPipe
 
 flapping : Inputs -> Bird -> Bird
-flapping {tap} bird = { bird | vy <- if tap then 7 else bird.vy }
+flapping {tap} bird = { bird | vy <- if tap then flapVelocity else bird.vy }
 
 updateBird : Inputs -> Model -> Bird
 updateBird inputs = falling inputs . moving inputs . flapping inputs . .bird
@@ -108,7 +138,7 @@ updateCountdown {time} game =
 -- This seems so wrong
 updateScore : Model -> Int
 updateScore game =
-    if any (\n -> nearing n.x 0.1 0) game.pipes
+    if any (\p -> nearing p.x 0.1 game.bird.x) game.pipes
     then game.score + 1
     else game.score
 
@@ -146,10 +176,26 @@ pipeGreen = rgb 60 100 60
 
 drawBackground = toForm <| image gameWidth gameHeight "assets/background_day.png"
 
+birdTilt vy =
+    clamp (degrees -90) (degrees 50) (8 * degrees vy)
+
+ground =
+    tiledImage gameWidth groundHeight "assets/ground.png"
+background =
+    image gameWidth gameHeight "assets/background.png"
 drawBird bird =
-    collage 500 500
-    [(toForm (fittedImage (round bird.width + 1) (round bird.height + 1) "assets/animation.gif")
-     |> move (0, bird.y))]
+    let asset = if bird.vy >= -5
+                then "assets/flapping.gif"
+                else "assets/falling.png"
+    in
+    collage gameWidth gameHeight
+    [ toForm background,
+      toForm ground
+      |> moveY groundY,
+      image bird.width bird.height asset
+      |> toForm
+      |> move (bird.x, bird.y)
+      |> rotate (birdTilt bird.vy) ]
 
 main = lift (drawBird . .bird) gameSig
 
