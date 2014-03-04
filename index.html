@@ -1,0 +1,450 @@
+<!DOCTYPE HTML>
+<html><head><meta charset="UTF-8"><title>Main</title><script
+type="text/javascript" src="elm-runtime.js"></script><script type="text/javascript">Elm.Main = Elm.Main || {};
+Elm.Main.make = function (_elm) {
+   _elm.Main = _elm.Main || {};
+   if (_elm.Main.values)
+   return _elm.Main.values;
+   var _N = Elm.Native,
+   _U = _N.Utils.make(_elm),
+   _L = _N.List.make(_elm),
+   _E = _N.Error.make(_elm),
+   _J = _N.JavaScript.make(_elm),
+   $moduleName = "Main";
+   var Basics = Elm.Basics.make(_elm);
+   var Color = Elm.Color.make(_elm);
+   var Graphics = Graphics || {};
+   Graphics.Collage = Elm.Graphics.Collage.make(_elm);
+   var Graphics = Graphics || {};
+   Graphics.Element = Elm.Graphics.Element.make(_elm);
+   var Keyboard = Elm.Keyboard.make(_elm);
+   var List = Elm.List.make(_elm);
+   var Maybe = Elm.Maybe.make(_elm);
+   var Mouse = Elm.Mouse.make(_elm);
+   var Native = Native || {};
+   Native.Ports = Elm.Native.Ports.make(_elm);
+   var Prelude = Elm.Prelude.make(_elm);
+   var Random = Elm.Random.make(_elm);
+   var Signal = Elm.Signal.make(_elm);
+   var String = Elm.String.make(_elm);
+   var Text = Elm.Text.make(_elm);
+   var Time = Elm.Time.make(_elm);
+   var Window = Elm.Window.make(_elm);
+   var _op = {};
+   var drawPipes = function (pipes) {
+      return _J.toList([]);
+   };
+   var birdTilt = function (vy) {
+      return A3(Basics.clamp,
+      Basics.degrees(-90),
+      Basics.degrees(50),
+      8 * Basics.degrees(vy));
+   };
+   var drawBird = function (bird) {
+      return function () {
+         var asset = _U.cmp(bird.vy,
+         -5) > -1 ? "assets/flapping.gif" : "assets/falling.png";
+         return Graphics.Collage.rotate(birdTilt(bird.vy))(Graphics.Collage.move({ctor: "_Tuple2"
+                                                                                 ,_0: bird.x
+                                                                                 ,_1: bird.y})(Graphics.Collage.toForm(A3(Graphics.Element.image,
+         bird.width,
+         bird.height,
+         asset))));
+      }();
+   };
+   var nearing = F3(function (n,
+   c,
+   m) {
+      return _U.cmp(m,
+      n - c) > -1 && _U.cmp(m,
+      n + c) < 1;
+   });
+   var colliding = F2(function (obj1,
+   obj2) {
+      return function () {
+         var height2 = Basics.toFloat(obj2.height);
+         var height1 = Basics.toFloat(obj1.height);
+         var width2 = Basics.toFloat(obj2.width);
+         var width1 = Basics.toFloat(obj1.width);
+         return A3(nearing,
+         obj1.x,
+         width1 / 2 + width2 / 2 - 2,
+         obj2.x) && A3(nearing,
+         obj1.y,
+         height1 / 2 + height2 / 2 - 2,
+         obj2.y);
+      }();
+   });
+   var moving = F2(function (_v0,
+   m) {
+      return function () {
+         return _U.replace([["x"
+                            ,m.x + m.vx * _v0.time]
+                           ,["y",m.y + m.vy * _v0.time]],
+         m);
+      }();
+   });
+   var Model = F4(function (a,
+   b,
+   c,
+   d) {
+      return {_: {}
+             ,bird: c
+             ,countdown: b
+             ,pipes: a
+             ,state: d};
+   });
+   var Bottom = {ctor: "Bottom"};
+   var Top = {ctor: "Top"};
+   var pipe = {_: {}
+              ,height: 793
+              ,pos: Top
+              ,vx: -6
+              ,vy: 0
+              ,width: 138
+              ,x: 400
+              ,y: 0};
+   var drawPipe = function (pipe) {
+      return Graphics.Collage.rotate(function () {
+         var _v2 = pipe.pos;
+         switch (_v2.ctor)
+         {case "Bottom": return 0;
+            case "Top": return Basics.pi;}
+         _E.Case($moduleName,
+         "between lines 203 and 205");
+      }())(Graphics.Collage.move({ctor: "_Tuple2"
+                                 ,_0: pipe.x
+                                 ,_1: pipe.y})(Graphics.Collage.toForm(A3(Graphics.Element.image,
+      pipe.width,
+      pipe.height,
+      "assets/pipe.png"))));
+   };
+   var Object = F7(function (a,
+   b,
+   c,
+   d,
+   e,
+   f,
+   g) {
+      return _U.insert("height",
+      f,
+      _U.insert("width",
+      e,
+      _U.insert("vy",
+      d,
+      _U.insert("vx",
+      c,
+      _U.insert("y",
+      b,
+      _U.insert("x",a,g))))));
+   });
+   var Dead = {ctor: "Dead"};
+   var Playing = {ctor: "Playing"};
+   var updateState = function (_v3) {
+      return function () {
+         return A2(List.any,
+         colliding(_v3.bird),
+         _v3.pipes) ? Dead : Playing;
+      }();
+   };
+   var Waiting = {ctor: "Waiting"};
+   var gameScale = 0.8;
+   var pipeInterval = 70;
+   var updateCountdown = F2(function (_v5,
+   game) {
+      return function () {
+         return _U.cmp(game.countdown,
+         0) > 0 ? game.countdown - _v5.time : pipeInterval;
+      }();
+   });
+   var flapVelocity = 12;
+   var flapping = F2(function (_v7,
+   bird) {
+      return function () {
+         return _U.replace([["vy"
+                            ,_v7.tap ? flapVelocity : bird.vy]],
+         bird);
+      }();
+   });
+   var gravity = -1.2;
+   var falling = F2(function (_v9,
+   f) {
+      return function () {
+         return _U.replace([["vy"
+                            ,f.vy + gravity * Math.pow(_v9.time,
+                            2)]],
+         f);
+      }();
+   });
+   var overflowX = 100;
+   var pipeHeight = 793;
+   var gap = pipeHeight / 2 + 125;
+   var createPipe = F2(function (rand,
+   pos) {
+      return function () {
+         var y = function () {
+            switch (pos.ctor)
+            {case "Bottom":
+               return Basics.toFloat(rand) - gap;
+               case "Top":
+               return Basics.toFloat(rand) + gap;}
+            _E.Case($moduleName,
+            "between lines 87 and 90");
+         }();
+         return _U.replace([["y",y]
+                           ,["pos",pos]],
+         pipe);
+      }();
+   });
+   var addPipes = F2(function (_v12,
+   _v13) {
+      return function () {
+         return function () {
+            return _U.cmp(_v13.countdown,
+            0) < 1 ? _L.append(_J.toList([A2(createPipe,
+                                         _v12.rand,
+                                         Top)
+                                         ,A2(createPipe,
+                                         _v12.rand,
+                                         Bottom)]),
+            _v13.pipes) : _v13.pipes;
+         }();
+      }();
+   });
+   var pipeWidth = 138;
+   var birdHeight = 64;
+   var birdWidth = 92;
+   var birdX = -120;
+   var bird = {_: {}
+              ,height: birdHeight
+              ,vx: 0
+              ,vy: 0
+              ,width: birdWidth
+              ,x: birdX
+              ,y: 0};
+   var initial = {_: {}
+                 ,bird: bird
+                 ,countdown: 100
+                 ,pipes: _J.toList([])
+                 ,state: Waiting};
+   var pipeWindow = 900;
+   var backgroundHeight = 896;
+   var groundHeight = 128;
+   var groundY = Basics.toFloat(0 - backgroundHeight) / 2 - groundHeight;
+   var groundTop = groundY + Basics.toFloat(groundHeight) / 2 - 1;
+   var moveBird = F2(function (inputs,
+   bird) {
+      return function () {
+         var bird$ = A2(moving,
+         inputs,
+         bird);
+         return _U.replace([["y"
+                            ,A2(Basics.max,
+                            groundTop + Basics.toFloat(bird.height) / 2 - 3,
+                            bird$.y)]],
+         bird);
+      }();
+   });
+   var updateBird = function (inputs) {
+      return function ($) {
+         return falling(inputs)(moveBird(inputs)(flapping(inputs)(function (_) {
+            return _.bird;
+         }($))));
+      };
+   };
+   var dead = F2(function (_v16,
+   game) {
+      return function () {
+         return _v16.tap ? initial : _U.replace([["bird"
+                                                 ,function ($) {
+                                                    return falling(_v16)(moveBird(_v16)($));
+                                                 }(game.bird)]],
+         game);
+      }();
+   });
+   var gameHeight = backgroundHeight + groundHeight;
+   var grounded = function (_v18) {
+      return function () {
+         return _U.cmp(_v18.y,
+         (0 - gameHeight) / 2) > -1;
+      }();
+   };
+   var gameWidth = 768;
+   var filterPipe = function (pipe) {
+      return _U.cmp(pipe.x,
+      Basics.toFloat(0 - gameWidth) / 2 - overflowX) > 0;
+   };
+   var updatePipes = F2(function (inputs,
+   game) {
+      return List.filter(filterPipe)(List.map(moving(inputs))(A2(addPipes,
+      inputs,
+      game)));
+   });
+   var play = F2(function (inputs,
+   game) {
+      return _U.replace([["state"
+                         ,updateState(game)]
+                        ,["countdown"
+                         ,A2(updateCountdown,
+                         inputs,
+                         game)]
+                        ,["bird"
+                         ,A2(updateBird,inputs,game)]
+                        ,["pipes"
+                         ,A2(updatePipes,inputs,game)]],
+      game);
+   });
+   var wait = F2(function (_v20,
+   game) {
+      return function () {
+         return _v20.tap ? A2(play,
+         _v20,
+         game) : game;
+      }();
+   });
+   var step = F2(function (inputs,
+   game) {
+      return function () {
+         var _v22 = game.state;
+         switch (_v22.ctor)
+         {case "Dead": return A2(dead,
+              inputs,
+              game);
+            case "Playing": return A2(play,
+              inputs,
+              game);
+            case "Waiting": return A2(wait,
+              inputs,
+              game);}
+         _E.Case($moduleName,
+         "between lines 168 and 171");
+      }();
+   });
+   var drawGround = Graphics.Collage.moveY(groundY)(Graphics.Collage.toForm(A3(Graphics.Element.tiledImage,
+   gameWidth,
+   groundHeight,
+   "assets/ground.png")));
+   var drawBackground = Graphics.Collage.toForm(A3(Graphics.Element.image,
+   gameWidth,
+   gameHeight,
+   "assets/background.png"));
+   var draw = F2(function (_v23,
+   game) {
+      return function () {
+         switch (_v23.ctor)
+         {case "_Tuple2":
+            return A3(Graphics.Element.container,
+              _v23._0,
+              _v23._1,
+              Graphics.Element.middle)(A3(Graphics.Element.container,
+              gameWidth,
+              gameHeight,
+              Graphics.Element.middle)(A2(Graphics.Collage.collage,
+              gameWidth,
+              gameHeight)(_J.toList([Graphics.Collage.scale(0.6)(Graphics.Collage.group(_L.append(_J.toList([drawBackground
+                                                                                                            ,drawBird(game.bird)
+                                                                                                            ,function ($) {
+                                                                                                               return Graphics.Collage.toForm(Text.asText($));
+                                                                                                            }(game.state)
+                                                                                                            ,drawGround]),
+              A2(List.map,
+              drawPipe,
+              game.pipes))))]))));}
+         _E.Case($moduleName,
+         "between lines 210 and 214");
+      }();
+   });
+   var Inputs = F3(function (a,
+   b,
+   c) {
+      return {_: {}
+             ,rand: c
+             ,tap: b
+             ,time: a};
+   });
+   var delta = A2(Signal._op["<~"],
+   function (t) {
+      return t / 20;
+   },
+   Time.fps(60));
+   var inputSig = A2(Signal.sampleOn,
+   delta,
+   A2(Signal._op["~"],
+   A2(Signal._op["~"],
+   A2(Signal._op["<~"],
+   Inputs,
+   delta),
+   Keyboard.space),
+   A3(Random.range,
+   -250,
+   250,
+   Time.every(1000))));
+   var gameSig = A3(Signal.foldp,
+   step,
+   initial,
+   inputSig);
+   var main = A3(Signal.lift2,
+   draw,
+   Window.dimensions,
+   gameSig);
+   _elm.Main.values = {_op: _op
+                      ,delta: delta
+                      ,inputSig: inputSig
+                      ,gameWidth: gameWidth
+                      ,groundHeight: groundHeight
+                      ,groundY: groundY
+                      ,groundTop: groundTop
+                      ,backgroundHeight: backgroundHeight
+                      ,gameHeight: gameHeight
+                      ,pipeWindow: pipeWindow
+                      ,birdX: birdX
+                      ,birdWidth: birdWidth
+                      ,birdHeight: birdHeight
+                      ,pipeWidth: pipeWidth
+                      ,pipeHeight: pipeHeight
+                      ,overflowX: overflowX
+                      ,gravity: gravity
+                      ,flapVelocity: flapVelocity
+                      ,pipeInterval: pipeInterval
+                      ,gameScale: gameScale
+                      ,bird: bird
+                      ,pipe: pipe
+                      ,initial: initial
+                      ,moving: moving
+                      ,falling: falling
+                      ,gap: gap
+                      ,createPipe: createPipe
+                      ,addPipes: addPipes
+                      ,filterPipe: filterPipe
+                      ,updatePipes: updatePipes
+                      ,flapping: flapping
+                      ,moveBird: moveBird
+                      ,updateBird: updateBird
+                      ,nearing: nearing
+                      ,colliding: colliding
+                      ,grounded: grounded
+                      ,updateState: updateState
+                      ,updateCountdown: updateCountdown
+                      ,play: play
+                      ,dead: dead
+                      ,wait: wait
+                      ,step: step
+                      ,gameSig: gameSig
+                      ,birdTilt: birdTilt
+                      ,drawGround: drawGround
+                      ,drawBackground: drawBackground
+                      ,drawBird: drawBird
+                      ,drawPipe: drawPipe
+                      ,drawPipes: drawPipes
+                      ,draw: draw
+                      ,main: main
+                      ,Waiting: Waiting
+                      ,Playing: Playing
+                      ,Dead: Dead
+                      ,Top: Top
+                      ,Bottom: Bottom
+                      ,Inputs: Inputs
+                      ,Object: Object
+                      ,Model: Model};
+   return _elm.Main.values;
+};</script></head><body><script type="text/javascript">Elm.fullscreen(Elm.Main)</script><noscript></noscript></body></html>
