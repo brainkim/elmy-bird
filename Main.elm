@@ -1,14 +1,16 @@
-import Keyboard
-import Mouse
-import Time
 import Window
 import Random
+import Time
+import Keyboard
+import Touch
+import Mouse
 
 -- Input
 delta : Signal Float
 delta = (\t -> t/20) <~ fps 60
 
 type Inputs = {time: Float, tap: Bool, rand: Int}
+
 inputSig : Signal Inputs
 inputSig = sampleOn delta (Inputs <~ delta
                                    ~ Keyboard.space
@@ -81,7 +83,7 @@ moving {time} m =
 falling {time} f = { f | vy <- f.vy + gravity * time^2 }
 
 gap : Float
-gap = pipeHeight / 2 + 125
+gap = pipeHeight / 2 + 150
 createPipe : Int -> Position -> Pipe
 createPipe rand pos =
     let y = case pos of
@@ -175,7 +177,7 @@ gameSig = foldp step initial inputSig
 
 -- Render
 birdTilt vy =
-    clamp (degrees -90) (degrees 50) (8 * degrees vy)
+    clamp (degrees -90) (degrees 30) (8 * degrees vy)
 
 drawGround =
     tiledImage gameWidth groundHeight "assets/ground.png"
@@ -208,7 +210,6 @@ drawPipes pipes = []
     
 draw (w, h) game = 
     (container w h middle
-    . container gameWidth gameHeight middle
     . collage gameWidth gameHeight) <|
     [scale 0.6 <|group ([drawBackground,drawBird game.bird,
                        (toForm . asText) game.state, drawGround ] ++ (map drawPipe game.pipes))]
