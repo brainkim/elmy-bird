@@ -1,6 +1,6 @@
 elmy-bird
 =========
-brainkim.github.io/elmy-bird
+[Flappy Bird][flap]
 
 Flappy Bird in Elm.
 TODO:
@@ -15,3 +15,6 @@ TODO:
 - Debounce spacebar
 - Add touch events
 - Add mouse events
+
+Contributors: Lita Cho
+[flap]:brainkim.github.io/elmy-bird
