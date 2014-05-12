@@ -17,4 +17,4 @@ TODO:
 - Add mouse events
 
 Contributors: Lita Cho
-[flap]:brainkim.github.io/elmy-bird
+[flap]:https://brainkim.github.io/elmy-bird
